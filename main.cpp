@@ -8,10 +8,7 @@ using namespace nix;
 
 int main(int argc, char **argv) {
   auto store = nix::openStore();
-  // auto state = std::make_unique<EvalState>("", store, store);
   std::vector<std::string> str_paths(argv + 1, argv + argc);
-  // std::vector<std::string> str_paths = {
-  //     "/nix/store/9xfvq3mdbmmx40d220zpgqflwqrhn8dv-nix-build-results.drv"};
   BuildMode buildMode = bmNormal;
   std::vector<DerivedPath> paths = {};
   for (std::string &s : str_paths) {

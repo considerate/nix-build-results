@@ -3,32 +3,28 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
     flake-utils.url = "github:numtide/flake-utils";
   };
-  outputs = inputs: inputs.flake-utils.lib.eachDefaultSystem (system:
+  outputs = inputs: {
+    overlays = {
+      nix-build-results = final: prev: {
+        nix-build-results = final.callPackage ./default.nix { };
+      };
+    };
+    overlay = inputs.self.overlays.nix-build-results;
+  } // inputs.flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import inputs.nixpkgs {
         inherit system;
-      };
-      nix-build-results = pkgs.stdenv.mkDerivation {
-        name = "nix-build-results";
-        src = ./.;
-        nativeBuildInputs = [
-          pkgs.cmake
-          pkgs.pkg-config
-        ];
-        buildInputs = [
-          pkgs.nix
-          pkgs.boost
-        ];
+        overlays = [ inputs.self.overlay ];
       };
     in
     {
       legacyPackages = pkgs;
       packages = {
-        inherit nix-build-results;
-        default = nix-build-results;
+        inherit (pkgs) nix-build-results;
+        default = pkgs.nix-build-results;
       };
       devShells = {
-        default = nix-build-results.overrideAttrs (old: {
+        default = pkgs.nix-build-results.overrideAttrs (old: {
           nativeBuildInputs = old.nativeBuildInputs ++ [
             pkgs.clang-tools
           ];
