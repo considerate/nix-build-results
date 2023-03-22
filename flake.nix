@@ -25,6 +25,9 @@
       legacyPackages = pkgs;
       packages = {
         inherit nix-build-results;
+        default = nix-build-results;
+      };
+      devShells = {
         default = nix-build-results.overrideAttrs (old: {
           nativeBuildInputs = old.nativeBuildInputs ++ [
             pkgs.clang-tools
