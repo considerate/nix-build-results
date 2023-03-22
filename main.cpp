@@ -1,28 +1,62 @@
 #include <iostream>
 #include <nix/build-result.hh>
-#include <nix/path-with-outputs.hh>
+#include <nix/derivations.hh>
+#include <nix/derived-path.hh>
+#include <nix/realisation.hh>
 #include <nix/store-api.hh>
+#include <nlohmann/json.hpp>
 #include <string_view>
 
 using namespace nix;
+using json = nlohmann::json;
+
+DerivedPath toDerivedPath(ref<Store> store, StorePath storePath) {
+  if (storePath.isDerivation()) {
+    auto drv = store->readDerivation(storePath);
+    return DerivedPath::Built{
+        .drvPath = storePath,
+        .outputs = drv.outputNames(),
+    };
+  } else {
+    return DerivedPath::Opaque{
+        .path = storePath,
+    };
+  }
+}
 
 int main(int argc, char **argv) {
-  auto store = nix::openStore();
+  ref<Store> store = nix::openStore();
   std::vector<std::string> str_paths(argv + 1, argv + argc);
   BuildMode buildMode = bmNormal;
   std::vector<DerivedPath> paths = {};
   for (std::string &s : str_paths) {
     std::string_view v = s.c_str();
-    StorePathWithOutputs storePath = parsePathWithOutputs(*store, v);
-    paths.push_back(storePath.toDerivedPath());
-    std::cout << s << std::endl;
+    StorePath storePath = store->parseStorePath(v);
+    DerivedPath derived = toDerivedPath(store, storePath);
+    paths.push_back(derived);
   }
   std::vector<BuildResult> results =
       store->buildPathsWithResults(paths, buildMode, store);
+  json outputs;
   for (BuildResult &res : results) {
-    std::cout << res.path.to_string(*store) << ": "
-              << (res.success() ? "success" : "failure") << " - "
-              << res.toString() << std::endl;
+    DerivedPath derived = res.path;
+    std::string path;
+    std::visit(overloaded{[&](DerivedPath::Built built) {
+                            path = store->printStorePath(built.drvPath);
+                          },
+                          [&](DerivedPath::Opaque opaque) {
+                            path = store->printStorePath(opaque.path);
+                          }},
+               derived);
+    json outPaths = {};
+    DrvOutputs outs = res.builtOutputs;
+    for (std::pair<DrvOutput, Realisation> const &x : outs) {
+      Realisation r = x.second;
+      outPaths.push_back(store->printStorePath(r.getPath()));
+    }
+    outputs[path] = {{"success", res.success()},
+                     {"status", res.toString()},
+                     {"outputs", outPaths}};
   }
-  std::cout << "Compiled" << std::endl;
+  std::cout << outputs << std::endl;
 }

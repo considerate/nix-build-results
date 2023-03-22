@@ -22,6 +22,9 @@
       packages = {
         inherit (pkgs) nix-build-results;
         default = pkgs.nix-build-results;
+        test = pkgs.runCommand "test" { } ''
+          cp ${./test.txt} $out
+        '';
       };
       devShells = {
         default = pkgs.nix-build-results.overrideAttrs (old: {
