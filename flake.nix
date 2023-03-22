@@ -9,6 +9,13 @@
         nix-build-results = final.callPackage ./default.nix { };
       };
     };
+    lib = {
+      toDrvs = attrs: builtins.listToAttrs (
+        map
+          (name: let value = attrs.${name}.drvPath; in { inherit name value; })
+          (builtins.attrNames attrs)
+      );
+    };
     overlay = inputs.self.overlays.nix-build-results;
   } // inputs.flake-utils.lib.eachDefaultSystem (system:
     let
@@ -21,6 +28,9 @@
       legacyPackages = pkgs;
       packages = {
         inherit (pkgs) nix-build-results;
+        drvs = inputs.self.lib.toDrvs {
+          inherit (inputs.self.packages.${system}) test default;
+        };
         default = pkgs.nix-build-results;
         test = pkgs.runCommand "test" { } ''
           cp ${./test.txt} $out
