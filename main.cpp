@@ -2,7 +2,9 @@
 #include <nix/build-result.hh>
 #include <nix/derivations.hh>
 #include <nix/derived-path.hh>
+#include <nix/globals.hh>
 #include <nix/realisation.hh>
+#include <nix/shared.hh>
 #include <nix/store-api.hh>
 #include <nlohmann/json.hpp>
 #include <string_view>
@@ -25,6 +27,9 @@ DerivedPath toDerivedPath(ref<Store> store, StorePath storePath) {
 }
 
 int main(int argc, char **argv) {
+  nix::initNix();
+  nix::initLibStore();
+  nix::initPlugins();
   ref<Store> store = nix::openStore();
   std::vector<std::string> str_paths(argv + 1, argv + argc);
   BuildMode buildMode = bmNormal;
