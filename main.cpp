@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
   nix::initNix();
   nix::initLibStore();
   nix::initPlugins();
+  settings.keepGoing = true;
   ref<Store> store = nix::openStore();
   std::vector<std::string> str_paths(argv + 1, argv + argc);
   BuildMode buildMode = bmNormal;
